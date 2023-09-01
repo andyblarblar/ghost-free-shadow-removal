@@ -11,6 +11,8 @@ from utils import *
 import scipy.stats as st
 import argparse, sys
 
+tf.compat.v1.disable_eager_execution()
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--task", default="pre-trained", help="path to folder containing the model")
 parser.add_argument("--data_dir", default="./ISTD_dataset/train/", help="path to real dataset")

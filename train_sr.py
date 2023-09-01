@@ -12,6 +12,8 @@ from utils import *
 import scipy.stats as st
 import argparse, sys
 
+tf.compat.v1.disable_eager_execution()
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--task", default="pre-trained", help="path to folder containing the model")
 parser.add_argument("--data_dir", default="./Dataset/ISTD_Dataset/", help="path to real dataset")
@@ -44,10 +46,10 @@ else:
 train_real_root = [ARGS.data_dir]
 
 # set up the model and define the graph
-with tf.compat.v1.variable_scope(tf.get_variable_scope()):
-    input = tf.placeholder(tf.float32, shape=[None, None, None, 3])
-    target = tf.placeholder(tf.float32, shape=[None, None, None, 3])
-    gtmask = tf.placeholder(tf.float32, shape=[None, None, None, 1])
+with tf.compat.v1.variable_scope(tf.compat.v1.get_variable_scope()):
+    input = tf.compat.v1.placeholder(tf.float32, shape=[None, None, None, 3])
+    target = tf.compat.v1.placeholder(tf.float32, shape=[None, None, None, 3])
+    gtmask = tf.compat.v1.placeholder(tf.float32, shape=[None, None, None, 1])
 
     # build the model
     shadow_free_image, predicted_mask = build_aggasatt_joint(input, channel, vgg_19_path=vgg_19_path)
@@ -62,8 +64,8 @@ with tf.compat.v1.variable_scope(tf.get_variable_scope()):
     with tf.compat.v1.variable_scope("discriminator", reuse=True):
         predict_fake, pred_fake_dict = build_discriminator(input, shadow_free_image)
 
-    d_loss = (tf.reduce_mean(-(tf.log(predict_real + EPS) + tf.log(1 - predict_fake + EPS)))) * 0.5
-    g_loss = tf.reduce_mean(-tf.log(predict_fake + EPS))
+    d_loss = (tf.reduce_mean(-(tf.compat.v1.log(predict_real + EPS) + tf.compat.v1.log(1 - predict_fake + EPS)))) * 0.5
+    g_loss = tf.reduce_mean(-tf.compat.v1.log(predict_fake + EPS))
 
     loss = loss_percep * 0.2 + loss_mask
 

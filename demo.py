@@ -36,7 +36,7 @@ if __name__ == '__main__':
     if not os.path.isdir(ARGS.result_dir):
         os.makedirs(ARGS.result_dir)
 
-    for image_filename in glob.glob(ARGS.input_dir + '/*.jpg'):
+    for image_filename in glob.glob(ARGS.input_dir + '/*'):
         img = cv2.imread(image_filename, -1)
         test_w = int(img.shape[1] * test_h / float(img.shape[0]))
         img = prepare_image(img, test_w, test_h)
