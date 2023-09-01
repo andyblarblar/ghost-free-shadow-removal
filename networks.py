@@ -1,5 +1,5 @@
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
+import tf_slim as slim
 import numpy as np
 import os,time,cv2,scipy.io
 
@@ -50,21 +50,21 @@ def identity_initializer():
 
 def se_block(input_feature, name, ratio=8):
     
-    kernel_initializer = tf.contrib.layers.variance_scaling_initializer()
+    kernel_initializer = tf.keras.initializers.variance_scaling()
     bias_initializer = tf.constant_initializer(value=0.0)
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         channel = input_feature.get_shape()[-1]
         # Global average pooling
         squeeze = tf.reduce_mean(input_feature, axis=[1,2], keepdims=True)   
         assert squeeze.get_shape()[1:] == (1,1,channel)
-        excitation = tf.layers.dense(inputs=squeeze,
+        excitation = tf.compat.v1.layers.dense(inputs=squeeze,
                                  units=channel//ratio,
                                  activation=tf.nn.relu,
                                  kernel_initializer=kernel_initializer,
                                  bias_initializer=bias_initializer,
                                  name='bottleneck_fc')   
         assert excitation.get_shape()[1:] == (1,1,channel//ratio)
-        excitation = tf.layers.dense(inputs=excitation,
+        excitation = tf.compat.v1.layers.dense(inputs=excitation,
                                  units=channel,
                                  activation=tf.nn.sigmoid,
                                  kernel_initializer=kernel_initializer,
@@ -76,9 +76,9 @@ def se_block(input_feature, name, ratio=8):
 
 def build_vgg19(input,vgg_path,reuse=False):
     vgg_path=scipy.io.loadmat(vgg_path)
-    with tf.variable_scope("vgg19"):
+    with tf.compat.v1.variable_scope("vgg19"):
         if reuse:
-            tf.get_variable_scope().reuse_variables()
+            tf.compat.v1.get_variable_scope().reuse_variables()
         net={}
         vgg_layers=vgg_path['layers'][0]
         net['input']=input-np.array([123.6800, 116.7790, 103.9390]).reshape((1,1,1,3))
@@ -109,23 +109,23 @@ def build_vgg19(input,vgg_path,reuse=False):
 def spp(net,channel=64,scope='g_pool'):
 
     # here we build the pooling stack
-    net_2 = tf.layers.average_pooling2d(net,pool_size=4,strides=4,padding='same')
+    net_2 = tf.compat.v1.layers.average_pooling2d(net,pool_size=4,strides=4,padding='same')
     net_2 = slim.conv2d(net_2,channel,[1,1],activation_fn=lrelu,normalizer_fn=nm,weights_initializer=identity_initializer(),scope=scope+'2')
 
-    net_8 = tf.layers.average_pooling2d(net,pool_size=8,strides=8,padding='same')
+    net_8 = tf.compat.v1.layers.average_pooling2d(net,pool_size=8,strides=8,padding='same')
     net_8 = slim.conv2d(net_8,channel,[1,1],activation_fn=lrelu,normalizer_fn=nm,weights_initializer=identity_initializer(),scope=scope+'8')
 
-    net_16 = tf.layers.average_pooling2d(net,pool_size=16,strides=16,padding='same')
+    net_16 = tf.compat.v1.layers.average_pooling2d(net,pool_size=16,strides=16,padding='same')
     net_16 = slim.conv2d(net_16,channel,[1,1],activation_fn=lrelu,normalizer_fn=nm,weights_initializer=identity_initializer(),scope=scope+'16')
 
-    net_32 = tf.layers.average_pooling2d(net,pool_size=32,strides=32,padding='same')
+    net_32 = tf.compat.v1.layers.average_pooling2d(net,pool_size=32,strides=32,padding='same')
     net_32 = slim.conv2d(net_32,channel,[1,1],activation_fn=lrelu,normalizer_fn=nm,weights_initializer=identity_initializer(),scope=scope+'32')
 
     net = tf.concat([
-      tf.image.resize_bilinear(net_2,(tf.shape(net)[1],tf.shape(net)[2])),
-      tf.image.resize_bilinear(net_8,(tf.shape(net)[1],tf.shape(net)[2])),
-      tf.image.resize_bilinear(net_16,(tf.shape(net)[1],tf.shape(net)[2])),
-      tf.image.resize_bilinear(net_32,(tf.shape(net)[1],tf.shape(net)[2])),
+      tf.compat.v1.image.resize_bilinear(net_2,(tf.shape(net)[1],tf.shape(net)[2])),
+      tf.compat.v1.image.resize_bilinear(net_8,(tf.shape(net)[1],tf.shape(net)[2])),
+      tf.compat.v1.image.resize_bilinear(net_16,(tf.shape(net)[1],tf.shape(net)[2])),
+      tf.compat.v1.image.resize_bilinear(net_32,(tf.shape(net)[1],tf.shape(net)[2])),
       net],axis=3)
 
     net=slim.conv2d(net,channel,[3,3],rate=1,activation_fn=lrelu,normalizer_fn=nm,weights_initializer=identity_initializer(),scope=scope+'sf')
@@ -143,7 +143,7 @@ def build_aggasatt_joint(input,channel=64,vgg_19_path='None'):
     vgg19_features=build_vgg19(input[:,:,:,0:3]*255.0,vgg_19_path)
     for layer_id in range(1,6):
         vgg19_f = vgg19_features['conv%d_2'%layer_id]
-        input = tf.concat([tf.image.resize_bilinear(vgg19_f,(tf.shape(input)[1],tf.shape(input)[2]))/255.0,input], axis=3)
+        input = tf.concat([tf.compat.v1.image.resize_bilinear(vgg19_f,(tf.shape(input)[1],tf.shape(input)[2]))/255.0,input], axis=3)
 
     sf=slim.conv2d(input,channel,[1,1],rate=1,activation_fn=lrelu,normalizer_fn=nm,weights_initializer=identity_initializer(),scope='g_sf')
 
@@ -195,9 +195,9 @@ def build_aggasatt_joint(input,channel=64,vgg_19_path='None'):
 
 
 def conv(batch_input, out_channels, stride):
-    with tf.variable_scope("conv"):
+    with tf.compat.v1.variable_scope("conv"):
         in_channels = batch_input.get_shape()[3]
-        filter = tf.get_variable("filter", [4, 4, in_channels, out_channels], dtype=tf.float32, initializer=tf.random_normal_initializer(0, 0.02))
+        filter = tf.compat.v1.get_variable("filter", [4, 4, in_channels, out_channels], dtype=tf.float32, initializer=tf.random_normal_initializer(0, 0.02))
         padded_input = tf.pad(batch_input, [[0, 0], [1, 1], [1, 1], [0, 0]], mode="CONSTANT")
         conv = tf.nn.conv2d(padded_input, filter, [1, stride, stride, 1], padding="VALID")
         return conv
@@ -208,14 +208,14 @@ def lreluX(x, a):
         return (0.5 * (1 + a)) * x + (0.5 * (1 - a)) * tf.abs(x)
 
 def batchnorm(input):
-    with tf.variable_scope("batchnorm"):
+    with tf.compat.v1.variable_scope("batchnorm"):
         # this block looks like it has 3 inputs on the graph unless we do this
         input = tf.identity(input)
 
         channels = input.get_shape()[3]
-        offset = tf.get_variable("offset", [channels], dtype=tf.float32, initializer=tf.zeros_initializer())
-        scale = tf.get_variable("scale", [channels], dtype=tf.float32, initializer=tf.random_normal_initializer(1.0, 0.02))
-        mean, variance = tf.nn.moments(input, axes=[0, 1, 2], keep_dims=False)
+        offset = tf.compat.v1.get_variable("offset", [channels], dtype=tf.float32, initializer=tf.zeros_initializer())
+        scale = tf.compat.v1.get_variable("scale", [channels], dtype=tf.float32, initializer=tf.random_normal_initializer(1.0, 0.02))
+        mean, variance = tf.nn.moments(input, axes=[0, 1, 2], keepdims=False)
         variance_epsilon = 1e-5
         normalized = tf.nn.batch_normalization(input, mean, variance, offset, scale, variance_epsilon=variance_epsilon)
         return normalized
@@ -229,7 +229,7 @@ def build_discriminator(discrim_inputs,discrim_targets):
     input = tf.concat([discrim_inputs, discrim_targets], axis=3)
 
     # layer_1: [batch, 256, 256, in_channels * 2] => [batch, 128, 128, ndf]
-    with tf.variable_scope("layer_1"):
+    with tf.compat.v1.variable_scope("layer_1"):
         convolved = conv(input, channel, stride=2)
         rectified = lreluX(convolved, 0.2)
         layers.append(rectified)
@@ -238,7 +238,7 @@ def build_discriminator(discrim_inputs,discrim_targets):
     # layer_3: [batch, 64, 64, ndf * 2] => [batch, 32, 32, ndf * 4]
     # layer_4: [batch, 32, 32, ndf * 4] => [batch, 31, 31, ndf * 8]
     for i in range(n_layers):
-        with tf.variable_scope("layer_%d" % (len(layers) + 1)):
+        with tf.compat.v1.variable_scope("layer_%d" % (len(layers) + 1)):
             out_channels = channel * min(2**(i+1), 8)
             stride = 1 if i == n_layers - 1 else 2  # last layer here has stride 1
             convolved = conv(layers[-1], out_channels, stride=stride)
@@ -247,7 +247,7 @@ def build_discriminator(discrim_inputs,discrim_targets):
             layers.append(rectified)
 
     # layer_5: [batch, 31, 31, ndf * 8] => [batch, 30, 30, 1]
-    with tf.variable_scope("layer_%d" % (len(layers) + 1)):
+    with tf.compat.v1.variable_scope("layer_%d" % (len(layers) + 1)):
         convolved = conv(rectified, out_channels=1, stride=1)
         output = tf.sigmoid(convolved)
         layers.append(output)
@@ -256,26 +256,26 @@ def build_discriminator(discrim_inputs,discrim_targets):
 
 
 def instance_norm(input, name="instance_norm"):
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         depth = input.get_shape()[3]
-        scale = tf.get_variable("scale", [depth], initializer=tf.random_normal_initializer(1.0, 0.02, dtype=tf.float32))
-        offset = tf.get_variable("offset", [depth], initializer=tf.constant_initializer(0.0))
-        mean, variance = tf.nn.moments(input, axes=[1,2], keep_dims=True)
+        scale = tf.compat.v1.get_variable("scale", [depth], initializer=tf.random_normal_initializer(1.0, 0.02, dtype=tf.float32))
+        offset = tf.compat.v1.get_variable("offset", [depth], initializer=tf.constant_initializer(0.0))
+        mean, variance = tf.nn.moments(input, axes=[1,2], keepdims=True)
         epsilon = 1e-5
-        inv = tf.rsqrt(variance + epsilon)
+        inv = tf.compat.v1.rsqrt(variance + epsilon)
         normalized = (input-mean)*inv
         return scale*normalized + offset
 
 def conv2d(input_, output_dim, ks=4, s=2, stddev=0.02, padding='SAME', name="conv2d"):
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         return slim.conv2d(input_, output_dim, ks, s, padding=padding, activation_fn=None,
-                            weights_initializer=tf.truncated_normal_initializer(stddev=stddev),
+                            weights_initializer=tf.compat.v1.truncated_normal_initializer(stddev=stddev),
                             biases_initializer=None)
 
 def deconv2d(input_, output_dim, ks=4, s=2, stddev=0.02, name="deconv2d"):
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         return slim.conv2d_transpose(input_, output_dim, ks, s, padding='SAME', activation_fn=None,
-                                    weights_initializer=tf.truncated_normal_initializer(stddev=stddev),
+                                    weights_initializer=tf.compat.v1.truncated_normal_initializer(stddev=stddev),
                                     biases_initializer=None)
 
 def residule_block(x, dim, ks=3, s=1, name='res'):

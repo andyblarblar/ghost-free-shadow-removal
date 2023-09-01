@@ -1,7 +1,7 @@
 from __future__ import division
 import os,time,cv2,scipy.io
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
+import tf_slim as slim
 import numpy as np
 import matplotlib.pyplot as plt
 from networks import build_discriminator
@@ -43,7 +43,7 @@ else:
 train_real_root=[ARGS.data_dir]
 
 # set up the model and define the graph
-with tf.variable_scope(tf.get_variable_scope()):
+with tf.compat.v1.variable_scope(tf.get_variable_scope()):
     input=tf.placeholder(tf.float32,shape=[None,None,None,3])
     target=tf.placeholder(tf.float32,shape=[None,None,None,3])
     gtmask = tf.placeholder(tf.float32,shape=[None,None,None,1])
@@ -56,9 +56,9 @@ with tf.variable_scope(tf.get_variable_scope()):
     # Perceptual Loss
     loss_percep = compute_percep_loss(shadow_free_image, target,vgg_19_path=vgg_19_path) 
     # Adversarial Loss
-    with tf.variable_scope("discriminator"):
+    with tf.compat.v1.variable_scope("discriminator"):
         predict_real,pred_real_dict = build_discriminator(input,target)
-    with tf.variable_scope("discriminator", reuse=True):
+    with tf.compat.v1.variable_scope("discriminator", reuse=True):
         predict_fake,pred_fake_dict = build_discriminator(input,shadow_free_image)
 
     d_loss=(tf.reduce_mean(-(tf.log(predict_real + EPS) + tf.log(1 - predict_fake + EPS)))) * 0.5
@@ -66,34 +66,34 @@ with tf.variable_scope(tf.get_variable_scope()):
 
     loss = loss_percep*0.2 + loss_mask
 
-train_vars = tf.trainable_variables()
+train_vars = tf.compat.v1.trainable_variables()
 d_vars = [var for var in train_vars if 'discriminator' in var.name]
 g_vars = [var for var in train_vars if 'g_' in var.name]
-g_opt=tf.train.AdamOptimizer(learning_rate=0.0002).minimize(loss*100+g_loss, var_list=g_vars) # optimizer for the generator
-d_opt=tf.train.AdamOptimizer(learning_rate=0.0001).minimize(d_loss,var_list=d_vars) # optimizer for the discriminator
+g_opt=tf.compat.v1.train.AdamOptimizer(learning_rate=0.0002).minimize(loss*100+g_loss, var_list=g_vars) # optimizer for the generator
+d_opt=tf.compat.v1.train.AdamOptimizer(learning_rate=0.0001).minimize(d_loss,var_list=d_vars) # optimizer for the discriminator
 
-for var in tf.trainable_variables():
+for var in tf.compat.v1.trainable_variables():
     print("Listing trainable variables ... ")
     print(var)
 
-saver=tf.train.Saver(max_to_keep=None)
+saver=tf.compat.v1.train.Saver(max_to_keep=None)
 
 if not os.path.isdir(task):
     os.makedirs(task)
 
 ######### Session #########
-sess=tf.Session()
-sess.run(tf.global_variables_initializer())
+sess=tf.compat.v1.Session()
+sess.run(tf.compat.v1.global_variables_initializer())
 ckpt=tf.train.get_checkpoint_state(task)
 print("[i] contain checkpoint: ", ckpt)
 
 if ckpt and continue_training:
-    saver_restore=tf.train.Saver([var for var in tf.trainable_variables()])
+    saver_restore=tf.compat.v1.train.Saver([var for var in tf.compat.v1.trainable_variables()])
     print('loaded '+ckpt.model_checkpoint_path)
     saver_restore.restore(sess,ckpt.model_checkpoint_path)
 # test doesn't need to load discriminator
 elif not is_training:
-    saver_restore=tf.train.Saver([var for var in tf.trainable_variables() if 'discriminator' not in var.name])
+    saver_restore=tf.compat.v1.train.Saver([var for var in tf.compat.v1.trainable_variables() if 'discriminator' not in var.name])
     print('loaded '+ckpt.model_checkpoint_path)
     saver_restore.restore(sess,ckpt.model_checkpoint_path)
 

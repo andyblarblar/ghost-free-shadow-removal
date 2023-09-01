@@ -1,0 +1,3 @@
+tensorflow
+tf-slim @ git+https://github.com/google-research/tf-slim.git
+opencv-python
